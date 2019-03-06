@@ -16,27 +16,31 @@ import NIO
 public struct JobsPostgreSQLDriver {
   
   /// The `PostgreSQLDatabase` to run commands on
-  let database: PostgreSQLDatabase
+  let databaseIdentifier: DatabaseIdentifier<PostgreSQLDatabase>
   
-  /// The `EventLoop` to run jobs on
-  public let eventLoop: EventLoop
+  /// The `Container` to run jobs on
+  public let container: Container
   
   /// Creates a new `JobsPostgreSQLDriver` instance
   ///
   /// - Parameters:
-  ///   - database: The `PostgreSQLDatabase` to run commands on
-  ///   - eventLoop: The `EventLoop` to run jobs on
-  public init(database: PostgreSQLDatabase, eventLoop: EventLoop) {
-    self.database = database
-    self.eventLoop = eventLoop
+  ///   - databaseIdentifier: The `DatabaseIdentifier<PostgreSQLDatabase>` to run commands on
+  ///   - container: The `Container` to run jobs on
+  public init(databaseIdentifier: DatabaseIdentifier<PostgreSQLDatabase>, container: Container) {
+    self.databaseIdentifier = databaseIdentifier
+    self.container = container
   }
 }
 
 extension JobsPostgreSQLDriver: JobsPersistenceLayer {
+  public var eventLoop: EventLoop {
+    return container.next()
+  }
+  
   public func get(key: String) -> EventLoopFuture<JobStorage?> {
     // Establish a database connection
-    return database.newConnection(on: eventLoop).flatMap { conn in
-
+    return container.withPooledConnection(to: databaseIdentifier) { conn in
+      
       // We ned to use SKIP LOCKED in order to handle multiple threads all getting the next job
       // Not sure how to make use of SKIP LOCKED in the QueryBuilder, saw raw SQL it is ...
       let sql = PostgreSQLQuery(stringLiteral: """
@@ -53,7 +57,7 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
         )
         RETURNING *
         """)
-
+      
       // Retrieve the next Job
       return conn.query(sql).map(to: JobStorage?.self) { rows in
         if let job = rows.first,
@@ -69,21 +73,28 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
   
   public func set(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void> {
     // Establish a database connection
-    return database.newConnection(on: eventLoop).map { conn in
+    return container.withPooledConnection(to: databaseIdentifier) { conn in
       // Encode and save the Job
       let data = try JSONEncoder().encode(jobStorage)
-      let _ = JobModel(key: key, jobId: jobStorage.id, data: data).save(on: conn)
+      return JobModel(key: key, jobId: jobStorage.id, data: data).save(on: conn).map { jobModel in
+        return
+      }
     }
   }
   
   public func completed(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void> {
     // Establish a database connection
-    return database.newConnection(on: eventLoop).flatMap { conn in
+    return container.withPooledConnection(to: databaseIdentifier) { conn in
       // Update the state
-      return JobModel.query(on: conn).filter(\.jobId == jobStorage.id).first().map { jobModel in
-        jobModel?.state = JobState.completed.rawValue
-        jobModel?.updatedAt = Date()
-        let _ = jobModel?.save(on: conn)
+      return JobModel.query(on: conn).filter(\.jobId == jobStorage.id).first().flatMap { jobModel in
+        if let jobModel = jobModel {
+          jobModel.state = JobState.completed.rawValue
+          jobModel.updatedAt = Date()
+          return jobModel.save(on: conn).map(to: Void.self) { jobModel in
+            return
+          }
+        }
+        return conn.future()
       }
     }
   }
@@ -162,5 +173,3 @@ extension JobModel: Content { }
 
 /// Allows `JobModel` to be used as a dynamic parameter in route definitions.
 extension JobModel: Parameter { }
-
-

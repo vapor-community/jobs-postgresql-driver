@@ -24,7 +24,7 @@ CREATE TABLE job (
 CREATE INDEX job_key_idx ON job(key);
 ```
 
-Initialize the Jobs service and set the default database for the `JobModel` model in your `confirgure.swift`:
+Initialize the Jobs service and set the default database for the `JobModel` model in your `configure.swift`:
 
 ```swift
 import Jobs
@@ -32,18 +32,12 @@ import JobsPostgreSQLDriver
 
 /// Register the Jobs service, with PostgreSQL persistence layer
 services.register(JobsPersistenceLayer.self) { container -> JobsPostgreSQLDriver in
-    return JobsPostgreSQLDriver(database: postgresql, eventLoop: container.next())
+    return JobsPostgreSQLDriver(databaseIdentifier: .psql, container: container)
 }
 try jobs(&services)
 
 /// Set the default database on the JobModel
 JobModel.defaultDatabase = .psql
-```
-
-Where `postgresql` is the instance of your `PostgreSQLDatabase`. ie:
-
-```swift
-let postgresql = PostgreSQLDatabase(config: PostgreSQLDatabaseConfig(url: ConfigVars.DATABASE_URL)!)
 ```
 
 
