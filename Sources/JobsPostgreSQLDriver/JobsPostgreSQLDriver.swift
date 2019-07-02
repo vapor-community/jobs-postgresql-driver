@@ -21,14 +21,18 @@ public struct JobsPostgreSQLDriver {
   /// The `Container` to run jobs on
   public let container: Container
   
+  /// Completed jobs should be deleted
+  public let deleteCompletedJobs: Bool
+  
   /// Creates a new `JobsPostgreSQLDriver` instance
   ///
   /// - Parameters:
   ///   - databaseIdentifier: The `DatabaseIdentifier<PostgreSQLDatabase>` to run commands on
   ///   - container: The `Container` to run jobs on
-  public init(databaseIdentifier: DatabaseIdentifier<PostgreSQLDatabase>, container: Container) {
+  public init(databaseIdentifier: DatabaseIdentifier<PostgreSQLDatabase>, container: Container, deleteCompletedJobs: Bool = false) {
     self.databaseIdentifier = databaseIdentifier
     self.container = container
+    self.deleteCompletedJobs = deleteCompletedJobs
   }
 }
 
@@ -88,12 +92,19 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
       // Update the state
       return JobModel.query(on: conn).filter(\.jobId == jobStorage.id).first().flatMap { jobModel in
         if let jobModel = jobModel {
+          // If we are just deleting completed jobs, then delete the job
+          if self.deleteCompletedJobs {
+            return jobModel.delete(on: conn).transform(to: ())
+          }
+          
+          // Otherwise, update the state
           jobModel.state = JobState.completed.rawValue
           jobModel.updatedAt = Date()
           return jobModel.save(on: conn).map(to: Void.self) { jobModel in
             return
           }
         }
+        
         return conn.future()
       }
     }
