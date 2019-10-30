@@ -1,27 +1,23 @@
 # JobsPostgreSQLDriver
 
-A package that sits on top of the Jobs package (https://github.com/vapor-community/jobs) and implements PostgreSQL as a persistence layer. 
+A package that sits on top of the Jobs package (https://github.com/vapor/jobs) and implements PostgreSQL as a persistence layer. 
 
 # Installation
+
 Add this to your Package.swift:
 
 ```swift
 .package(url: "https://github.com/vapor-community/jobs-postgresql-driver", from: "0.1.0")
 ```
 
-Create the `jobs` table in your database:
+Create the `jobs` table in your database via a migration:
 
 ```swift
-CREATE TABLE job (
-    id SERIAL PRIMARY KEY,
-    key character varying(255) NOT NULL,
-    job_id character varying(255) NOT NULL,
-    data bytea NOT NULL,
-    state character varying(255) NOT NULL,
-    created_at timestamp with time zone NOT NULL DEFAULT clock_timestamp(),
-    updated_at timestamp with time zone NOT NULL DEFAULT clock_timestamp()
-);
-CREATE INDEX job_key_idx ON job(key);
+var migrations = MigrationConfig()
+
+migrations.add(model: JobModel.self, database: .psql)
+
+services.register(migrations)
 ```
 
 Initialize the Jobs service and set the default database for the `JobModel` model in your `configure.swift`:
@@ -39,6 +35,5 @@ try jobs(&services)
 /// Set the default database on the JobModel
 JobModel.defaultDatabase = .psql
 ```
-
 
 Follow the instructions in the `Jobs` package for more setup and configuration information. 
