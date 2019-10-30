@@ -1,6 +1,6 @@
 # JobsPostgreSQLDriver
 
-A package that sits on top of the Jobs package (https://github.com/vapor-community/jobs) and implements PostgreSQL as a persistence layer. 
+A package that sits on top of the Jobs package (https://github.com/vapor/jobs) and implements PostgreSQL as a persistence layer. 
 
 # Installation
 Add this to your Package.swift:
