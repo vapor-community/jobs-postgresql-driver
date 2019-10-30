@@ -108,6 +108,23 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
     public func processingKey(key: String) -> String {
         return key + "-processing"
     }
+
+    public func requeue(key: String, jobStorage: JobStorage) -> EventLoopFuture<Void> {
+        return container.withPooledConnection(to: databaseIdentifier) { conn in
+            JobModel.query(on: conn)
+                .filter(\.jobId == jobStorage.id)
+                .first()
+                .flatMap { jobModel in
+                    if let jobModel = jobModel {
+                        // Update the Job's updatedAt date
+                        jobModel.updatedAt = Date()
+                        return jobModel.save(on: conn).transform(to: ())
+                    }
+
+                    return conn.future()
+                }
+        }
+    }
 }
 
 struct DecoderUnwrapper: Decodable {

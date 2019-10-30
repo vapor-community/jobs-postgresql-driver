@@ -15,8 +15,8 @@ let package = Package(
             from: "3.0.0"
         ),
         .package(
-            url: "https://github.com/vapor/jobs.git",
-            .branch("3")
+            url: "https://github.com/tonyarnold/jobs.git",
+            .branch("feature/backport-delay-until-to-3")
         ),
         .package(
             url: "https://github.com/vapor/fluent-postgres-driver.git",
