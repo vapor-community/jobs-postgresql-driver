@@ -94,7 +94,7 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
                         }
 
                         // Otherwise, update the state
-                        jobModel.state = JobState.completed.rawValue
+                        jobModel.state = .completed
                         jobModel.updatedAt = Date()
                         return jobModel.save(on: conn).transform(to: ())
                     }
@@ -117,7 +117,7 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
                 .flatMap { jobModel in
                     if let jobModel = jobModel {
                         // Set the Job's state back to pending
-                        jobModel.state = JobState.pending.rawValue
+                        jobModel.state = .pending
                         jobModel.updatedAt = Date()
                         return jobModel.save(on: conn).transform(to: ())
                     }
@@ -131,12 +131,6 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
 struct DecoderUnwrapper: Decodable {
     let decoder: Decoder
     init(from decoder: Decoder) { self.decoder = decoder }
-}
-
-public enum JobState: String, Codable {
-    case pending
-    case processing
-    case completed
 }
 
 public final class JobModel: PostgreSQLModel {
@@ -156,12 +150,19 @@ public final class JobModel: PostgreSQLModel {
     /// The Job data
     var data: Data
     /// The current state of the Job
-    var state: String
+    var state: State
 
     /// The created timestamp
     var createdAt: Date
     /// The updated timestamp
     var updatedAt: Date
+
+    /// State of the job
+    public enum State: String, PostgreSQLRawEnum {
+        case pending
+        case processing
+        case completed
+    }
 
     /// Codable keys
     enum CodingKeys: String, CodingKey {
@@ -178,14 +179,14 @@ public final class JobModel: PostgreSQLModel {
         key: String,
         jobId: String,
         data: Data,
-        state: JobState = .pending,
+        state: JobModel.State = .pending,
         createdAt: Date = Date(),
         updatedAt: Date = Date()
     ) {
         self.key = key
         self.jobId = jobId
         self.data = data
-        self.state = state.rawValue
+        self.state = state
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -198,7 +199,7 @@ extension JobModel: Migration {
             try addProperties(to: builder)
         }
         .flatMap { _ in
-            return connection.create(index: "job_key_idx").on(\JobModel.key).run()
+            connection.create(index: "job_key_idx").on(\JobModel.key).run()
         }
     }
 }
