@@ -116,7 +116,8 @@ extension JobsPostgreSQLDriver: JobsPersistenceLayer {
                 .first()
                 .flatMap { jobModel in
                     if let jobModel = jobModel {
-                        // Update the Job's updatedAt date
+                        // Set the Job's state back to pending
+                        jobModel.state = JobState.pending.rawValue
                         jobModel.updatedAt = Date()
                         return jobModel.save(on: conn).transform(to: ())
                     }
