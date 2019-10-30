@@ -174,7 +174,16 @@ public final class JobModel: PostgreSQLModel {
 }
 
 /// Allows `JobModel` to be used as a dynamic migration.
-extension JobModel: Migration {}
+extension JobModel: Migration {
+    public static func prepare(on connection: PostgreSQLConnection) -> EventLoopFuture<Void> {
+        return Database.create(self, on: connection) { builder in
+            try addProperties(to: builder)
+        }
+        .flatMap { _ in
+            return connection.create(index: "job_key_idx").on(\JobModel.key).run()
+        }
+    }
+}
 
 /// Allows `JobModel` to be encoded to and decoded from HTTP messages.
 extension JobModel: Content {}
