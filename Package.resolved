@@ -66,10 +66,10 @@
       },
       {
         "package": "jobs",
-        "repositoryURL": "https://github.com/vapor/jobs.git",
+        "repositoryURL": "https://github.com/tonyarnold/jobs.git",
         "state": {
-          "branch": "3",
-          "revision": "9a62a1b940bd64a1b077ff8daf67d4bd8a6bed27",
+          "branch": "feature/backport-delay-until-to-3",
+          "revision": "2697f76b9fb4becf9c53e3da70f099197d84652e",
           "version": null
         }
       },
